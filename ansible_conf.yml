@@ -1,0 +1,73 @@
+- name: Création ressources brief4 groupe 1
+  hosts: localhost
+  connection: local
+  tasks:
+  - name: Création du groupe de ressources
+    azure_rm_resourcegroup:
+      name: rgbr4gr1
+      location: uksouth
+  - name: Creation du réseau virtuel
+    azure_rm_virtualnetwork:
+      resource_group: rgbr4gr1
+      name: vnetbr4
+      address_prefixes: "10.0.0.0/16"
+  - name: Add subnet
+    azure_rm_subnet:
+      resource_group: rgbr4gr1
+      name: mySubnet
+      address_prefix: "10.0.1.0/24"
+      virtual_network: vnetbr4
+  - name: Création de l'IP publique admin
+    azure_rm_publicipaddress:
+      resource_group: rgbr4gr1
+      allocation_method: Static
+      name: ipadmin
+    register: output_ip_address
+  - name: Public IP Admin
+    debug:
+      msg: "L'adresse publique IP admin est {{ output_ip_address.state.ip_address }}."
+  - name: Création de l'IP publique utilisateurs
+    azure_rm_publicipaddress:
+      resource_group: rgbr4gr1
+      allocation_method: Static
+      name: ipusers
+      domain_name: n8ng1
+    register: output_ip_address_users
+  - name: Public IP utilisateurs
+    debug:
+      msg: "L'adresse publique IP utilisateurs est {{ output_ip_address_users.state.ip_address }}."
+  - name: Create Network Security Group that allows SSH
+    azure_rm_securitygroup:
+      resource_group: rgbr4gr1
+      name: connectionssh
+      rules:
+        - name: SSH
+          protocol: Tcp
+          destination_port_range: 22
+          access: Allow
+          priority: 1001
+          direction: Inbound
+  - name: Création des cartes réseaux
+    azure_rm_networkinterface:
+      resource_group: rgbr4gr1
+      name: myNIC
+      virtual_network: vnetbr4
+      subnet: mySubnet
+      public_ip_name: myPublicIP
+      security_group: myNetworkSecurityGroup
+  - name: Create VM
+    azure_rm_virtualmachine:
+      resource_group: rgbr4gr1
+      name: myVM
+      vm_size: Standard_DS1_v2
+      admin_username: azureuser
+      ssh_password_enabled: false
+      ssh_public_keys:
+        - path: /home/azureuser/.ssh/authorized_keys
+          key_data: "<key_data>"
+      network_interfaces: myNIC
+      image:
+        offer: CentOS
+        publisher: OpenLogic
+        sku: '7.5'
+        version: latest
