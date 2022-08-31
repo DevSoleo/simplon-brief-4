@@ -1,0 +1,148 @@
+- name: Création ressources brief4 groupe 1
+  hosts: localhost
+  connection: local
+  tasks:
+  - name: Création du groupe de ressources
+    azure_rm_resourcegroup:
+      name: rgbr4gr1
+      location: uksouth
+  - name: Creation du réseau virtuel
+    azure_rm_virtualnetwork:
+      resource_group: rgbr4gr1
+      name: vnetbr4
+      address_prefixes: "10.0.0.0/16"
+  - name: Ajout du sous-réseau
+    azure_rm_subnet:
+      resource_group: rgbr4gr1
+      name: AzureBastionSubnet
+      address_prefix: "10.0.0.0/24"
+      virtual_network: vnetbr4
+  - name: Création de l'IP publique bastion
+    azure_rm_publicipaddress:
+      resource_group: rgbr4gr1
+      allocation_method: Static
+      name: ipbastion
+    register: output_ip_address
+  - name: Public IP Bastion
+    debug:
+      msg: "L'adresse publique IP du bastion est {{ output_ip_address.state.ip_address }}."
+  - name: Création de l'IP de la VM
+    azure_rm_publicipaddress:
+      resource_group: rgbr4gr1
+      allocation_method: Static
+      name: ipvm
+      domain_name: n8ng1
+    register: output_ip_address_users
+  - name: Public IP de la VM
+    debug:
+      msg: "L'adresse publique IP de la vm est {{ output_ip_address_users.state.ip_address }}."
+  - name: Create Network Security Group that allows SSH
+    azure_rm_securitygroup:
+      resource_group: rgbr4gr1
+      name: connectionssh
+      rules:
+        - name: SSH
+          protocol: Tcp
+          destination_port_range: 22
+          access: Allow
+          priority: 1001
+          direction: Inbound
+  - name: Création des cartes réseaux
+    azure_rm_networkinterface:
+      resource_group: rgbr4gr1
+      name: netintg1
+      virtual_network: vnetbr4
+      subnet: subnetg1
+      public_ip_name: myPublicIP
+      security_group: myNetworkSecurityGroup
+      - name: Create Bastion Host
+  delegate_to: localhost
+  gather_facts: false
+  tasks:
+  - name: Create bastion
+    azure.azcollection.azure_rm_bastion:
+      name: bastiong1
+      sku: standard
+      instance_count: 2
+      resource_group: rgbr4gr1
+      target_vnet: vnetbr4
+      public_ip_address_name: ipbastion
+      state: present
+  - name: Create VM
+    azure_rm_virtualmachine:
+      resource_group: rgbr4gr1
+      name: myVM
+      vm_size: Standard_DS1_v2
+      admin_username: admin
+      ssh_password_enabled: false
+      ssh_public_keys:
+        - path: /home/azureuser/.ssh/authorized_keys
+          key_data: "<key_data>"
+      network_interfaces: myNIC
+      image:
+        offer: debian-11
+        publisher: Debian
+        sku: '11'
+        version: latest
+
+      osProfile:
+    computerName: vmnico
+    adminUsername: adminuser
+    linuxConfiguration:
+      disablePasswordAuthentication: true
+      ssh:
+        publicKeys:
+        - path: "/home/adminuser/.ssh/authorized_keys"
+          keyData: |-
+            ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC6weIM5RegM8nd65pTC3LbEK30f4CnsaXiF/wfa6MZyUF+ueBSsECahrqjh6CyfahwiRZ0tAY9Bg4FX4C3yteps61AFJ4q11Gon3vZcNvOOqeQYEQHo+PtA47TNbUbVSAnuMiPyJY37JCDMtOI21URHTRzQp8jfVsJ6r6lKY/GNxH+3L9KEGKLUdVREcP9+6maFdCmGFDx+0zPrBWEPnDtb3OcJ8WSrpwK3Im6ty1JqEMlniHOxLEmnDNSfrrBFsLVjNKtPwjZA3H/3OypgPa/8jGTUXOmeQNI3uDCOVy8BchfK2+GlpzE6eutb2o7ldGF45+ErWcnTQIHsMTNM0RIDe9bSw0jEt8bqajxNXsLbZbbssp0sakdtogWn8WPHDBnedVRNuwSiFfYzyob2TteooA2xFfPvNTTfRa/NqiLU22i9n9IafjcGfyxQ5Bw+vIFJbJv7SnNW45c339PncpbpHskyyfcDHi2t2a6t80iuMaZXJwcoRss5/PN46GqVNv0MJKXhUQUijHgdkMVIhiTDTzEG8IDx5JaPR9pVEzINJBrtzxXzbbMD+CPMZgG0qWJ+8bLc2ljWK76vyouBjlIyZUNphfUknjGRvEDR851vfL2EPBCb/kdo8QxpEi+WHNJo4htV6vtetnMFwawavNt5LeSYMLf82BY6SOdcX8yGQ== nemesys@linuxmachine
+            ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDL+vBbX57TsYfDb3fLJxCK1cnESAMyg82aD53QDaobhsOgoek+MmKQiMEllWJOVkD39pKrM1nEV8MIigtEcTr5p/B7wd08r25tPD/J4XfrnWNPW7o9ND6r2zoqx1HPvFLU8eoTOW1Zxf5CHJ9d9/Mq1RmGS0MmK/fNgu0aeybhxwpo3VJI9quH1pmGkiMSvXOfRJoTIqkuAlo3eKKxKOzpYaVsn7GHaLtvl8sZJslDZwLsIYcrpQwTvRNZuaJRsUNpEy3Sv2NKhUPJZFm6O1TPjGBtyn9UnVR3BRug/F+lVH+ae/t4G2YHTYdWfLc4Bvip4SwxKQeo31WNQYLJ62lpLuGElh1S4kg6CHRhZVEYBrOpu6u3mLom37SIDuXfW3uzqlOt3m4WXgCHbaMf/2N8MJ366UUMIvNtsYR3TepHuuIK9zyfCJgrYOrXdd5yVBmHI/2q+4qbukfot6qhzgM9fLJBh3JvjgGOVOVdWOxGwYYhkKlQqZ+Ezx2p50OGgP8= utilisateur@UTILISA-KAO31C7
+            ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQChqVgV7sOg/a6CfRT0b4D5Wk5jfPV492ZvD7PwWcvSy8RoOvXBnU16XNWV1YfgpSTRGoXNbtKjpxHtZKYpiJ1zrk9vAjmwniPO+3qfclb//CHx1FZCc0HMmp5gaqhbieJ7F5WIHveT7It9COjBj/aXvoj7ualdGfiaeb88CuQXSL7eeYFpNWhItu3HNPN/ImFxmi0JywfU0AZFOdetYQPnYwLaPaQ1SXX0lq+vy9W0ebXh6H0UsWE096Sn2YHvNStHH1qK81SuQqQ5kz638iD+iJK0UyjKRPyw8U1v5DrdDIcKodBKyHbkK4ghdlEe9nlrywiKaFFhrkFpotTqeEmg7siInR+4bcJ09V/78OZCEucM6Xi2sJoWwN1Ej49rNRq7iLe850Ui8/HNTwb91dzCGWFaYIHbMlbLpT8ltujFtiTSkE/smCvJj/sGWQ5GupyCwuxMhyQtKJiybgudYNJHuJT+RLi6qGMjfN3GYWod2UZOLYG9cTgLx8cA3+aK/Qc= dunvael@Debian
+    secrets: []
+
+
+
+properties:
+  vmId: dc603422-93f4-4541-9628-f3f6697ced1a
+  hardwareProfile:
+    vmSize: Standard_DS1_v2
+  storageProfile:
+    imageReference:
+      publisher: Debian
+      offer: debian-11
+      sku: '11'
+      version: latest
+    osDisk:
+      osType: Linux
+      name: vmnico_OsDisk_1_a405daa2ebae4e1f969a4ac496e59315
+      createOption: FromImage
+      caching: ReadWrite
+      managedDisk:
+        storageAccountType: Premium_LRS
+        id: "/subscriptions/a1f74e2d-ec58-4f9a-a112-088e3469febb/resourceGroups/testnicolas/providers/Microsoft.Compute/disks/vmnico_OsDisk_1_a405daa2ebae4e1f969a4ac496e59315"
+      diskSizeGB: 30
+    dataDisks:
+    - lun: 0
+      name: diskgr4
+      createOption: Attach
+      caching: None
+      managedDisk:
+        storageAccountType: Premium_LRS
+        id: "/subscriptions/a1f74e2d-ec58-4f9a-a112-088e3469febb/resourceGroups/testnicolas/providers/Microsoft.Compute/disks/diskgr4"
+      diskSizeGB: 64
+  osProfile:
+    computerName: vmnico
+    adminUsername: adminuser
+    linuxConfiguration:
+      disablePasswordAuthentication: true
+      ssh:
+        publicKeys:
+        - path: "/home/adminuser/.ssh/authorized_keys"
+          keyData: |-
+            ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC6weIM5RegM8nd65pTC3LbEK30f4CnsaXiF/wfa6MZyUF+ueBSsECahrqjh6CyfahwiRZ0tAY9Bg4FX4C3yteps61AFJ4q11Gon3vZcNvOOqeQYEQHo+PtA47TNbUbVSAnuMiPyJY37JCDMtOI21URHTRzQp8jfVsJ6r6lKY/GNxH+3L9KEGKLUdVREcP9+6maFdCmGFDx+0zPrBWEPnDtb3OcJ8WSrpwK3Im6ty1JqEMlniHOxLEmnDNSfrrBFsLVjNKtPwjZA3H/3OypgPa/8jGTUXOmeQNI3uDCOVy8BchfK2+GlpzE6eutb2o7ldGF45+ErWcnTQIHsMTNM0RIDe9bSw0jEt8bqajxNXsLbZbbssp0sakdtogWn8WPHDBnedVRNuwSiFfYzyob2TteooA2xFfPvNTTfRa/NqiLU22i9n9IafjcGfyxQ5Bw+vIFJbJv7SnNW45c339PncpbpHskyyfcDHi2t2a6t80iuMaZXJwcoRss5/PN46GqVNv0MJKXhUQUijHgdkMVIhiTDTzEG8IDx5JaPR9pVEzINJBrtzxXzbbMD+CPMZgG0qWJ+8bLc2ljWK76vyouBjlIyZUNphfUknjGRvEDR851vfL2EPBCb/kdo8QxpEi+WHNJo4htV6vtetnMFwawavNt5LeSYMLf82BY6SOdcX8yGQ== nemesys@linuxmachine
+            ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDL+vBbX57TsYfDb3fLJxCK1cnESAMyg82aD53QDaobhsOgoek+MmKQiMEllWJOVkD39pKrM1nEV8MIigtEcTr5p/B7wd08r25tPD/J4XfrnWNPW7o9ND6r2zoqx1HPvFLU8eoTOW1Zxf5CHJ9d9/Mq1RmGS0MmK/fNgu0aeybhxwpo3VJI9quH1pmGkiMSvXOfRJoTIqkuAlo3eKKxKOzpYaVsn7GHaLtvl8sZJslDZwLsIYcrpQwTvRNZuaJRsUNpEy3Sv2NKhUPJZFm6O1TPjGBtyn9UnVR3BRug/F+lVH+ae/t4G2YHTYdWfLc4Bvip4SwxKQeo31WNQYLJ62lpLuGElh1S4kg6CHRhZVEYBrOpu6u3mLom37SIDuXfW3uzqlOt3m4WXgCHbaMf/2N8MJ366UUMIvNtsYR3TepHuuIK9zyfCJgrYOrXdd5yVBmHI/2q+4qbukfot6qhzgM9fLJBh3JvjgGOVOVdWOxGwYYhkKlQqZ+Ezx2p50OGgP8= utilisateur@UTILISA-KAO31C7
+            ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQChqVgV7sOg/a6CfRT0b4D5Wk5jfPV492ZvD7PwWcvSy8RoOvXBnU16XNWV1YfgpSTRGoXNbtKjpxHtZKYpiJ1zrk9vAjmwniPO+3qfclb//CHx1FZCc0HMmp5gaqhbieJ7F5WIHveT7It9COjBj/aXvoj7ualdGfiaeb88CuQXSL7eeYFpNWhItu3HNPN/ImFxmi0JywfU0AZFOdetYQPnYwLaPaQ1SXX0lq+vy9W0ebXh6H0UsWE096Sn2YHvNStHH1qK81SuQqQ5kz638iD+iJK0UyjKRPyw8U1v5DrdDIcKodBKyHbkK4ghdlEe9nlrywiKaFFhrkFpotTqeEmg7siInR+4bcJ09V/78OZCEucM6Xi2sJoWwN1Ej49rNRq7iLe850Ui8/HNTwb91dzCGWFaYIHbMlbLpT8ltujFtiTSkE/smCvJj/sGWQ5GupyCwuxMhyQtKJiybgudYNJHuJT+RLi6qGMjfN3GYWod2UZOLYG9cTgLx8cA3+aK/Qc= dunvael@Debian
+    secrets: []
+  networkProfile:
+    networkInterfaces:
+    - id: "/subscriptions/a1f74e2d-ec58-4f9a-a112-088e3469febb/resourceGroups/testnicolas/providers/Microsoft.Network/networkInterfaces/vmnicoVMNic"
+  provisioningState: Succeeded
