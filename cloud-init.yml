@@ -1,0 +1,65 @@
+#cloud-config
+
+groups:
+  - admingroup: [root,sys]
+  - cloud-users
+  - docker
+
+users:
+  - default
+
+  - name: nicolas
+    gecos: Nicolas
+    primary_group: nicolas
+    groups: sudo, users, admin, admingroup
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAFjy502YGu/9ynT+GKUvGASthTm6GdBjWx+SeBgdT5k1aj0Vrp1cYrRrigf744XxHfy8WioKiK/MnnIaL+demOAN/rI6YHOYrLtMEoABoukwniO+hEWFhu7vBH4j8nMSLvCvaqDJzpa3MkzcUa4vN9VO6cl6XNjGpze0KBXN6UiSrFv7DDfasoEz+KcU1YBblzo/C9/2KGMovlgvOZMjNWKBjf+na99ebx/9iffL1A7QyRtW46Xc05gNPVEOCd1QkZcqUDPpmpkoCG0m7ZjMq9uCFrknKXo56NdBzq/YT13HME5mEA9h7buT7YFbkv6iylwjn5bB/oQsf/z+nUlTlxfTMRWUuKV63WG8cBpu4w5bOvhUYv3oDwwsGsLC+wi7+mYP8kSZTKaK67wp/BRSZBajmK0BYax0inQN+p6HE09a7678nFJLC0o8wYBZ/Oj1kIqdOETzvws/blU5tuUHGXHyxSqm5JbqY0rJOa3hPZTuaO5PQu63SZQz0Lkd286FNoZBTVzMC4bVqxegMV7ozgesLt0R0ZmWmzhxNKvxFgTw3PZEu7QPvxrLdSTSOdRazjHmz13pV7qdEKn4ACRiPzqAbZJqaE2L/2TewglaEs6zzRl79l+sUJrr8afz0C/oP0BsaV7ohQcNnlyMfab8rmlVitu5iSfV0V+ojB7bKyJX thomas@host-9HNSGD5
+
+  - name: noa
+    gecos: Noa
+    passwd: "$6$jCheUtQqsSkup4VR$q8xtBuY8TG.j0PgJ/264dlBM5P7/v1hymZWfq39CrLnTHokfePtkWFBWTNJLvrlMyaS7ehSqZN.7Sm6qvT84T1"
+    primary_group: noa
+    groups: sudo, users, admin, admingroup
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ22kbj03g37Nc50Pt4CiPGR5mkNYisvfN7xu4iGZjqD
+
+  - name: thomas
+    gecos: Thomas
+    primary_group: thomas
+    groups: sudo, users, admin, admingroup
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC6weIM5RegM8nd65pTC3LbEK30f4CnsaXiF/wfa6MZyUF+ueBSsECahrqjh6CyfahwiRZ0tAY9Bg4FX4C3yteps61AFJ4q11Gon3vZcNvOOqeQYEQHo+PtA47TNbUbVSAnuMiPyJY37JCDMtOI21URHTRzQp8jfVsJ6r6lKY/GNxH+3L9KEGKLUdVREcP9+6maFdCmGFDx+0zPrBWEPnDtb3OcJ8WSrpwK3Im6ty1JqEMlniHOxLEmnDNSfrrBFsLVjNKtPwjZA3H/3OypgPa/8jGTUXOmeQNI3uDCOVy8BchfK2+GlpzE6eutb2o7ldGF45+ErWcnTQIHsMTNM0RIDe9bSw0jEt8bqajxNXsLbZbbssp0sakdtogWn8WPHDBnedVRNuwSiFfYzyob2TteooA2xFfPvNTTfRa/NqiLU22i9n9IafjcGfyxQ5Bw+vIFJbJv7SnNW45c339PncpbpHskyyfcDHi2t2a6t80iuMaZXJwcoRss5/PN46GqVNv0MJKXhUQUijHgdkMVIhiTDTzEG8IDx5JaPR9pVEzINJBrtzxXzbbMD+CPMZgG0qWJ+8bLc2ljWK76vyouBjlIyZUNphfUknjGRvEDR851vfL2EPBCb/kdo8QxpEi+WHNJo4htV6vtetnMFwawavNt5LeSYMLf82BY6SOdcX8yGQ== nemesys@linuxmachine
+
+apt:
+  sources:
+    docker.list:
+      source: deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+
+packages_update: true
+packages_upgrade: true
+
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg-agent
+  - software-properties-common
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+
+# Add default auto created user to docker group
+system_info:
+  default_user:
+    groups: [docker]
+
+runcmd:
+  - sudo docker pull n8nio/n8n
+  - docker run -it --rm --name n8n -p 80:5678 -e DB_TYPE=postgresdb -e DB_POSTGRESDB_DATABASE=n8ndb -e DB_POSTGRESDB_HOST=psqlserver-20.postgres.database.azure.com -e DB_POSTGRESDB_PORT=5432 -e DB_POSTGRESDB_USER=n8n@psqlserver-20 -e DB_POSTGRESDB_SCHEMA=public -e DB_POSTGRESDB_PASSWORD=2022Simplon! -e GENERIC_TIMEZONE="Europe/Paris" -e TZ="Europe/Paris" -v /var/lib/n8n:/home/node/.n8n n8nio/n8n n8n start
