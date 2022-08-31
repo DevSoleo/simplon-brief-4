@@ -1,0 +1,140 @@
+---
+# Creation ressources groupe1
+
+- hosts: localhost
+  vars:
+    rg: groupe_1_Test_Thomas
+    resources: &ressources
+      location: eastus
+      resource_group: "{{ rg }}"
+  connection: local
+  tasks:
+
+    - name: Creation du groupe de ressources
+      azure_rm_resourcegroup:
+        location: eastus
+        name: "{{ rg }}"
+    - name: Creation du reseau virtuel
+      azure_rm_virtualnetwork:
+        resource_group: "{{ rg }}"
+        name: vnetth1
+        address_prefixes: "10.0.0.0/16"
+    - name: Creation du sous réseau
+      azure_rm_subnet:
+        resource_group: "{{ rg }}"
+        name: subnetg1th
+        address_prefix: "10.0.2.0/24"
+        virtual_network: vnetth1
+    - name: Creation de l IP publique bastion
+      azure_rm_publicipaddress:
+        resource_group: "{{ rg }}"
+        allocation_method: Static
+        name: ipbastion1
+        sku: standard
+    - name: Creation de l IP publique VM
+      azure_rm_publicipaddress:
+        resource_group: "{{ rg }}"
+        allocation_method: Static
+        name: ipvm
+        sku: standard
+
+# register est la récupération de la sortie de la fonction dans une variable  ansible.builtin.shell
+      register: ippub
+    - debug:
+        msg: "Adresse IP Publique: {{ ippub.state.ip_address }}"
+
+    - name: Creation du groupe de sécurité azure SSH
+      azure_rm_securitygroup:
+        resource_group: "{{ rg }}"
+        name: myNetworkSecurityGroup
+        rules:
+          - name: SSH
+            protocol: Tcp
+            destination_port_range: 22
+            access: Allow
+            priority: 1001
+            direction: Inbound
+          - name: web
+            protocol: Tcp
+            destination_port_range: 80
+            access: Allow
+            priority: 1002
+            direction: Inbound
+          - name: webplus
+            protocol: Tcp
+            destination_port_range: 8080
+            access: Allow
+            priority: 1003
+            direction: Inbound
+          - name: websecur
+            protocol: Tcp
+            destination_port_range: 443
+            access: Allow
+            priority: 1004
+            direction: Inbound
+
+    - name: Creation du sous réseau Bastion
+      azure_rm_subnet:
+        resource_group: "{{ rg }}"
+        name: AzureBastionSubnet
+        address_prefix: "10.0.1.0/24"
+        virtual_network: vnetth1
+
+    - name: Creation du bastion
+      shell: 
+        cmd: az network bastion create --location eastus --name bastion --public-ip-address ipbastion1 --resource-group groupe_1_Test_Thomas --vnet-name vnetth1
+      delegate_to: localhost
+
+    - name: Network interface
+      azure_rm_networkinterface:
+        resource_group: "{{ rg }}"
+        name: interface
+        virtual_network: vnetth1
+        subnet: subnetg1th
+        public_ip_name: ipvm
+        security_group: myNetworkSecurityGroup
+
+    - name: Creation d'un serveur postgreSQL
+      azure_rm_postgresqlserver:
+        resource_group: "{{ rg }}"
+        name: test-postgresql-server-th1
+        sku:
+          name: B_Gen5_1
+          tier: Basic
+        location: eastus
+        storage_mb: 5120
+        enforce_ssl: True
+        storage_autogrow: True
+        admin_username: cloudsa
+        admin_password: fjheriufriu"é''2434
+
+    - name: Creation de la base de donnée postgreSQL
+      azure_rm_postgresqldatabase:
+        resource_group: "{{ rg }}"
+        server_name: test-postgresql-server-th1
+        name: db1-g1
+
+    - name: Creation regle firewall pour VM
+      azure_rm_postgresqlfirewallrule:
+        resource_group: "{{ rg }}"
+        server_name: test-postgresql-server-th1
+        name: regle1
+        start_ip_address: "{{ ippub.state.ip_address }}"
+        end_ip_address: "{{ ippub.state.ip_address }}"
+
+    - name: Creation de la VM
+      azure_rm_virtualmachine:
+        resource_group: "{{ rg }}"
+        name: vmtest
+        vm_size: Standard_DS1_v2
+        admin_username: thomas
+        ssh_password_enabled: false
+        ssh_public_keys:
+          - path: /home/thomas/.ssh/authorized_keys
+            key_data: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDQtaIPgHDrA4olC0mkDwPZqDA6ZHEVBJXUwf4kqwAHiUwnB0DtDlj0Vide0JJ56ODEEIojm3H8LExDRwxTWdFPn+JzwDVMA7xWqBBfcuykmzISXB2cTBR1AILhWIETAHtHZMqWBAZakfc5g1ik0VeQas6JAYHr0nzFdC9wO1FQJnbgoEHZERb4/Xxvxn/91GIvDqPwDRQr1OAutqUeenJyihip+US+Xnbrq/TmKKuQM+MJLrpMa2QlKoflo+7cs69q47v/W8EAx4x8RL77Woz8G5T8FvJuuPVkEcvqEUtb9cbnDaytSp02hYAYstsgW01cRgIVHXta5aK5o/0cmtU0vmMuECWZk18bDw3JkTgBzOKZ/cmJl1ur3qa9744tBKxu31LUbyOVYb92pc72s4lAfUESjPSiqSJ4nQ8iuGuwDDt3RVJEXKUCtnjDxGO8Qa8dgaK/LOEWCRTfLZ9yxo0ytEKCelVC2fVhBv1pJQubYb8R8IkqmcyoZ2+b5iOiVSIOgfijnEAh2aOTX/uTgcDNKYxxNpfTe0e+hXRfP/LL4QF+BF43uXwEEfw42I3X9jfO7Usd7LQndsIiA9B93gv87CtdoOIUCpRt4b4t1Q2d0cBhlS/YPqixauxMvpXJcUDISwoVCfmCjMNposBbIiyH4vrq91P4apb1u7oTmrNaTQ== thomas@host
+        network_interfaces: interface
+        image:
+          offer: UbuntuServer
+          publisher: Canonical
+          sku: '18.04-LTS'
+          version: latest
