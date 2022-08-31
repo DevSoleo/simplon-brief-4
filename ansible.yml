@@ -3,46 +3,34 @@
 
 - hosts: localhost
   vars:
-    rg: test_ansible_101
-    resources: &ressources
-      location: eastus
-      resource_group: "{{ rg }}"
+    rg: mercredi_test_4
   connection: local
   tasks:
-    - name: Creation du groupe de ressourcesa
+    - name: Création du ResourceGroup
       azure_rm_resourcegroup:
         location: eastus
         name: "{{ rg }}"
-    - name: Creation du reseau virtuel
+    - name: Création du VNet
       azure_rm_virtualnetwork:
         resource_group: "{{ rg }}"
         name: vnetbr4
         address_prefixes: "10.0.0.0/16"
-    - name: Creation du sous réseau
+    - name: Création du Subnet
       azure_rm_subnet:
         resource_group: "{{ rg }}"
         name: subnetg1
         address_prefix: "10.0.2.0/24"
         virtual_network: vnetbr4
-    - name: Creation de l IP publique bastion
-      azure_rm_publicipaddress:
-        resource_group: "{{ rg }}"
-        allocation_method: Static
-        name: ipbastion
-        sku: standard
-    - name: Creation de l IP publique VM
+    - name: Création de l'IP publique de la VM
       azure_rm_publicipaddress:
         resource_group: "{{ rg }}"
         allocation_method: Static
         name: ipvm
         sku: standard
-
-# register est la récupération de la sortie de la fonction dans une variable  ansible.builtin.shell
       register: ippub
     - debug:
         msg: "Adresse IP Publique: {{ ippub.state.ip_address }}"
-
-    - name: Creation du groupe de sécurité azure SSH
+    - name: Création du NSG
       azure_rm_securitygroup:
         resource_group: "{{ rg }}"
         name: myNetworkSecurityGroup
@@ -71,16 +59,6 @@
             access: Allow
             priority: 1004
             direction: Inbound
-    - name: Creation du sous réseau Bastion
-      azure_rm_subnet:
-        resource_group: "{{ rg }}"
-        name: AzureBastionSubnet
-        address_prefix: "10.0.1.0/24"
-        virtual_network: vnetbr4
-    - name: Creation du bastion
-      shell: 
-        cmd: az network bastion create --location eastus --name bastion --public-ip-address ipbastion --resource-group test_ansible_101 --vnet-name vnetbr4
-      delegate_to: localhost
     - name: Network interface
       azure_rm_networkinterface:
         resource_group: "{{ rg }}"
@@ -94,13 +72,13 @@
         resource_group: "{{ rg }}"
         name: vmtest
         vm_size: Standard_DS1_v2
-        custom_data: "{{ lookup('file', 'cloud-init.yml') }}"
         admin_username: adminuser
         ssh_password_enabled: false
         ssh_public_keys:
           - path: /home/adminuser/.ssh/authorized_keys
             key_data: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDIA63uZA2mphnWmK/fD+J0IL2e3Th2BzbZ7RgZQQwy12Qfr2ObceXQgWtsPf41XfIudWqTNsw1J3B2nlyC7V72rTpBZP0O2cYHsRsz0kQXefWMHsgIfBNZKooLY7ZN0S/ay76VO8rAT/wgEEmtne1zHC6pv+V69gqVQr22JujdEJiwqEHOtV3x1X1eM3B8+ZM/ugoUrnrkLc18LKPaAUxvi4Bta4t1ILSHRZqvJdpf8YPH02PT2HCQWPNksYcgOeoUXQrf7gCD8mkL4aAO5ogQyi5q/XyN65CsYJLO0J4688W8r5hAJyUCQgx+KbhuoVdBaOGmFyBwVNjR7TODnQPX
         network_interfaces: interface
+        custom_data: "{{ lookup('file', 'cloud-init.yml') }}"
         image:
           offer: UbuntuServer
           publisher: Canonical
