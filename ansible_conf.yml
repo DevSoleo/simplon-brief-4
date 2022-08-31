@@ -118,6 +118,7 @@
         location: eastus
         storage_mb: 5120
         enforce_ssl: True
+        version: 11
         storage_autogrow: True
         admin_username: adminuser
         admin_password: Xc2f6HE904d2GHtR09
