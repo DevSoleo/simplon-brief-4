@@ -62,4 +62,4 @@ system_info:
 
 runcmd:
   - sudo docker pull n8nio/n8n
-  - docker run -it --rm --name n8n -p 80:5678 -e DB_TYPE=postgresdb -e DB_POSTGRESDB_DATABASE=n8ndb -e DB_POSTGRESDB_HOST=psqlserver-20.postgres.database.azure.com -e DB_POSTGRESDB_PORT=5432 -e DB_POSTGRESDB_USER=n8n@psqlserver-20 -e DB_POSTGRESDB_SCHEMA=public -e DB_POSTGRESDB_PASSWORD=2022Simplon! -e GENERIC_TIMEZONE="Europe/Paris" -e TZ="Europe/Paris" -v /var/lib/n8n:/home/node/.n8n n8nio/n8n n8n start
+  - docker run -it --rm -d --name n8n -p 80:5678 -e DB_TYPE=postgresdb -e DB_POSTGRESDB_DATABASE=n8ndb -e DB_POSTGRESDB_HOST=posn8n.postgres.database.azure.com -e DB_POSTGRESDB_PORT=5432 -e DB_POSTGRESDB_USER=adminuser@posn8n -e DB_POSTGRESDB_SCHEMA=public -e DB_POSTGRESDB_PASSWORD=2022Simplon! -e GENERIC_TIMEZONE="Europe/Paris" -e TZ="Europe/Paris" -v /var/lib/n8n:/home/node/.n8n n8nio/n8n n8n start
