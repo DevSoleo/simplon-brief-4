@@ -2,7 +2,7 @@
 # Creation ressources groupe1
 - hosts: localhost
   vars:
-    rg: rg1
+    rg: n8n_g1_3
   connection: local
   tasks:
     - name: Creation du groupe de ressources
@@ -111,26 +111,26 @@
     - name: Creation d'un serveur postgreSQL
       azure_rm_postgresqlserver:
         resource_group: "{{ rg }}"
-        name: posgres
+        name: posn8n
         sku:
           name: B_Gen5_1
           tier: Basic
         location: eastus
         storage_mb: 5120
-        enforce_ssl: True
+        enforce_ssl: False
         version: 11
         storage_autogrow: True
         admin_username: adminuser
-        admin_password: Xc2f6HE904d2GHtR09
+        admin_password: 2022Simplon!
     - name: Creation de la base de donnée postgreSQL
       azure_rm_postgresqldatabase:
         resource_group: "{{ rg }}"
-        server_name: posgres
-        name: data
+        server_name: posn8n
+        name: n8ndb
     - name: Creation regle firewall pour VM
       azure_rm_postgresqlfirewallrule:
         resource_group: "{{ rg }}"
-        server_name: posgres
+        server_name: posn8n
         name: regle
         start_ip_address: "{{ ippub.state.ip_address }}"
         end_ip_address: "{{ ippub.state.ip_address }}"
@@ -150,4 +150,4 @@
           publisher: Canonical
           sku: '18.04-LTS'
           version: latest
-        custom_data: "{{ lookup('file', '/home/nemesys/Documents/cloudinit.yaml') }}"
+        custom_data: "{{ lookup('file', '/home/nemesys/Documents/cloud-init.yml') }}"
