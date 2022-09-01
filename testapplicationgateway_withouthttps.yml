@@ -88,6 +88,7 @@
         name: interface
         virtual_network: "{{ vnet }}"
         subnet: subnet_VM
+#config pour aucune ip publique pour la vm
         create_with_security_group: False
         ip_configurations:
           - name: regle_ip
