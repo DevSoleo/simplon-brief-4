@@ -47,6 +47,7 @@
         allocation_method: Static
         name: ipvm
         sku: standard
+        domaine_name : "{{ rg }}"
 # register est la récupération de la sortie de la fonction dans une variable  ansible.builtin.shell
       register: ippub
     - debug:
