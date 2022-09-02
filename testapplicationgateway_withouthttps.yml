@@ -25,6 +25,17 @@
         virtual_network_name: "{{ vnet }}"
         address_prefix_cidr: "10.0.1.0/24"
       register: subnetAG
+    - name: recuperer info subnet AG
+      azure_rm_subnet_info:
+        resource_group: "{{ rg }}"
+        virtual_network_name: "{{ vnet }}"
+        name: "{{ subnet_ag }}"
+      register: subnet_outputs
+#technique de sioux
+    - name: recuperer subnet id
+      set_fact:
+        subnet_id: "{{ subnet_outputs.subnets[0].id }}"
+      register: id_subnet
     - name: Creation subnet VM
       azure_rm_subnet:
         resource_group: "{{ rg }}"
@@ -42,6 +53,7 @@
       register: ipAG
     - debug:
         msg: "Adresse IP AG: {{ ipAG.state.ip_address }}"
+###
     - name: Creation du groupe de sécurité azure SSH
       azure_rm_securitygroup:
         resource_group: "{{ rg }}"
@@ -73,9 +85,6 @@
             direction: Inbound
     - name: Network interface AG
       azure_rm_networkinterface:
-#        request_routing_rules:
-#          backend_address_pool: nom ressource...
-# à voir pour créer les règles de backend pool 
         resource_group: "{{ rg }}"
         name: interface
         virtual_network: "{{ vnet }}"
@@ -85,10 +94,9 @@
     - name: Network interface VM
       azure_rm_networkinterface:
         resource_group: "{{ rg }}"
-        name: interface
+        name: interface_1
         virtual_network: "{{ vnet }}"
         subnet: subnet_VM
-#config pour aucune ip publique pour la vm
         create_with_security_group: False
         ip_configurations:
           - name: regle_ip
@@ -111,6 +119,14 @@
           publisher: Canonical
           sku: '18.04-LTS'
           version: latest
+    - name: recuperer info interface réseau
+      azure_rm_networkinterface_info:
+        resource_group: "{{ rg }}"
+        name: vmtest
+      register: network_interface_output
+    - name: recuperer adresse ip privée
+      debug: "{{ network_interface_output.ip_configuration.private_ip_address }}"
+      register: ip-privee_vm
     - name: Creation de la ressource Application Gateway
       azure_rm_appgateway:
         resource_group: "{{ rg }}"
@@ -121,22 +137,21 @@
           capacity: 2
         gateway_ip_configurations:
           - subnet:
-              id: #subscriptions/a1f74e2d-ec58-4f9a-a112-088e3469febb/resourceGroups/test_thomas_app_gateway/providers/Microsoft.Network/virtualNetworks/vnettest_app_gateway/subnets/subnet_app_gateway
+              id: "{{ id_subnet }}"
               name: "{{ subnet_ag }}"
               virtual_network_name: "{{ vnet }}"
         frontend_ip_configurations:
           - subnet:
-              id: #subscriptions/a1f74e2d-ec58-4f9a-a112-088e3469febb/resourceGroups/test_thomas_app_gateway/providers/Microsoft.Network/virtualNetworks/vnettest_app_gateway/subnets/subnet_app_gateway
+              id: "{{ id_subnet }}"
               name: "{{ subnet_ag }}"
               virtual_network_name: "{{ vnet }}"
-            publip_ip_address: #reference de la ressource Public IP
             name: configuration_ip_frontend
         frontend_ports:
           - port: 90
             name: port_frontend_AG
         backend_address_pools:
           - backend_addresses:
-              - ip_address: #adresse_ip_machine_privée
+              - ip_address: "{{ ip-privee_vm }}"
             name: pool_adresse_backend
         backend_http_settings_collection:
           - port: 80
