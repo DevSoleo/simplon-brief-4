@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Utilities
-iteration="4"
+iteration="1"
 
 resource_group="n8n_g1_${iteration}"
 

@@ -1,4 +1,4 @@
-- name: Creation bastion
+- name: Création du Bastion
   azure.azcollection.azure_rm_bastionhost:
     resource_group: "{{ resource_group }}"
     name: "{{ bastion_name }}"
@@ -17,7 +17,7 @@
     enable_file_copy: False
     scale_units: 6
     disable_copy_paste: False
-- name: Création d'un serveur Azure PostgreSQL
+- name: Création d'une ressource Azure PostgreSQL
   azure_rm_postgresqlserver:
     resource_group: "{{ resource_group }}"
     name: "{{ psql_server_name }}"
@@ -47,7 +47,7 @@
   azure_rm_virtualmachine:
     resource_group: "{{ resource_group }}"
     name: "{{ vm_app_name }}"
-    vm_size: "{{ size }}"
+    vm_size: "{{ vm_size }}"
     admin_username: "{{ admin_name }}"
     ssh_password_enabled: false
     ssh_public_keys:
