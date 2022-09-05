@@ -59,6 +59,6 @@
       publisher: "{{ image_publisher }}"
       sku: "{{ image_sku }}"
       version: "{{ image_version }}"
-    custom_data: "{{ lookup('file', './cloud-init_tmp.yml') }}"
+    custom_data: "{{ lookup('file', './tmp/cloud-init_tmp.yml') }}"
 - debug:
     msg: " ### Lien de N8N: http://{{ fqdn }}.{{ local }}.cloudapp.azure.com ###"

@@ -1,0 +1,61 @@
+- name: Creation de la ressource Application Gateway
+  azure_rm_appgateway:
+    resource_group: "{{ rg }}"
+    name: myAppGateway
+    sku:
+      name: standard_small
+      tier: standard
+      capacity: 2
+    gateway_ip_configurations:
+      - subnet:
+          id: "{{ subnet_ag.response[0].id }}"
+          name: ipconfip
+          virtual_network_name: "{{ vnet }}"
+    frontend_ip_configurations:
+      - public_ip_address: "{{ ipAG.response[0].properties.ip_address }}"
+        name: ipconffront
+    frontend_ports:
+      - port: 80
+        name: port_frontend_AG
+    backend_address_pools:
+      - backend_addresses:
+          - ip_address: "{{ ipvm.response[0].properties.ip_address }}"
+        name: pool_adresse_backend
+    backend_http_settings_collection:
+      - port: 80
+        protocol: http
+        cookie_based_affinity: enabled
+        name: reglage_http
+    http_listeners:
+      - frontend_ip_configuration: ipconffront
+        frontend_port: port_frontend_AG
+        name: ecoute_AG_http
+    request_routing_rules:
+      - rule_type: Basic
+        backend_address_pool: pool_adresse_backend
+        backend_http_settings: reglage_http
+        http_listener: ecoute_AG_http
+        name: regle_http
+- name: Network interface Gateway
+  azure_rm_networkinterface:
+    resource_group: "{{ rg }}"
+    name: interfacegw
+    virtual_network: "{{ vnet }}"
+    subnet: subnetVM
+    create_with_security_group: False
+    public_ip_name: ipgw
+    security_group: myNetworkSecurityGroup
+    ip_configurations:
+      - name: default
+        primary: True
+        application_gateway_backend_address_pools:
+        - name: mybackend
+          application_gateway: myAppGateway
+- name: recuperer info interface réseau gateway
+  azure_rm_networkinterface_info:
+    resource_group: "{{ rg }}"
+    name: interfacevm
+  register: network_interface_output
+- name: recuperer ip privée vm
+  set_fact:
+    ipvm: "{{ network_interface_vm.networkinterfaces[0].ip_configurations[0].private_ip_address }}"
