@@ -1,0 +1,154 @@
+---
+# Creation ressources groupe1
+- hosts: localhost
+  vars:
+    rg: n8n_g1_3
+  connection: local
+  tasks:
+    - name: Creation du groupe de ressources
+      azure_rm_resourcegroup:
+        location: eastus
+        name: "{{ rg }}"
+    - name: Creation du reseau virtuel
+      azure_rm_virtualnetwork:
+        resource_group: "{{ rg }}"
+        name: vnetbr4
+        address_prefixes: "10.0.0.0/16"
+    - name: Create a subnet
+      azure_rm_subnet:
+        resource_group: "{{ rg }}"
+        name: AzureBastionSubnet
+        virtual_network_name: vnetbr4
+        address_prefix_cidr: "10.0.1.0/24"
+      register: subnetbast
+    - name: Creation du sous réseau
+      azure_rm_subnet:
+        resource_group: "{{ rg }}"
+        name: subnetg1
+        virtual_network_name: vnetbr4
+        address_prefix: "10.0.2.0/24"    
+    - name: Creation de l IP publique bastion
+      azure_rm_publicipaddress:
+        resource_group: "{{ rg }}"
+        allocation_method: Static
+        name: ipbastion
+        sku: standard
+      register: ipbast
+    - debug:
+        msg: "Adresse IP Bastion: {{ ipbast.state.ip_address }}"
+    - name: récupére l IP publique bastion
+      azure_rm_publicipaddress_info:
+        resource_group: "{{ rg }}"
+        name: ipbastion
+      register: publicIPbast
+    - name: Creation de l IP publique VM
+      azure_rm_publicipaddress:
+        resource_group: "{{ rg }}"
+        allocation_method: Static
+        name: ipvm
+        sku: standard
+        domain_name : "{{ rg }}"
+# register est la récupération de la sortie de la fonction dans une variable  ansible.builtin.shell
+      register: ippub
+    - debug:
+        msg: "Adresse IP Publique: {{ ippub.state.ip_address }}"
+    - name: Creation du groupe de sécurité azure SSH
+      azure_rm_securitygroup:
+        resource_group: "{{ rg }}"
+        name: myNetworkSecurityGroup
+        rules:
+          - name: SSH
+            protocol: Tcp
+            destination_port_range: 22
+            access: Allow
+            priority: 1001
+            direction: Inbound
+          - name: web
+            protocol: Tcp
+            destination_port_range: 80
+            access: Allow
+            priority: 1002
+            direction: Inbound
+          - name: webplus
+            protocol: Tcp
+            destination_port_range: 8080
+            access: Allow
+            priority: 1003
+            direction: Inbound
+          - name: websecur
+            protocol: Tcp
+            destination_port_range: 443
+            access: Allow
+            priority: 1004
+            direction: Inbound
+    - name: Network interface
+      azure_rm_networkinterface:
+        resource_group: "{{ rg }}"
+        name: interface
+        virtual_network: vnetbr4
+        subnet: subnetg1
+        public_ip_name: ipvm
+        security_group: myNetworkSecurityGroup
+    
+    - name: Creation bastion
+      azure.azcollection.azure_rm_bastionhost:
+        resource_group: "{{ rg }}"
+        name: bastion
+        ip_configurations:
+          - name: testip
+            subnet:
+              id: "{{ subnetbast.state.id }}"
+            public_ip_address:
+              id: "{{ publicIPbast.publicipaddresses[0].id }}"
+            private_ip_allocation_method: Dynamic
+        sku:
+          name: Standard
+        enable_tunneling: True
+        enable_shareable_link: False
+        enable_ip_connect: False
+        enable_file_copy: False
+        scale_units: 6
+        disable_copy_paste: False
+    - name: Creation d'un serveur postgreSQL
+      azure_rm_postgresqlserver:
+        resource_group: "{{ rg }}"
+        name: posn8n
+        sku:
+          name: B_Gen5_1
+          tier: Basic
+        location: eastus
+        storage_mb: 5120
+        enforce_ssl: False
+        version: 11
+        storage_autogrow: True
+        admin_username: adminuser
+        admin_password: 2022Simplon!
+    - name: Creation de la base de donnée postgreSQL
+      azure_rm_postgresqldatabase:
+        resource_group: "{{ rg }}"
+        server_name: posn8n
+        name: n8ndb
+    - name: Creation regle firewall pour VM
+      azure_rm_postgresqlfirewallrule:
+        resource_group: "{{ rg }}"
+        server_name: posn8n
+        name: regle
+        start_ip_address: "{{ ippub.state.ip_address }}"
+        end_ip_address: "{{ ippub.state.ip_address }}"
+    - name: Creation de la VM
+      azure_rm_virtualmachine:
+        resource_group: "{{ rg }}"
+        name: vmtest
+        vm_size: Standard_DS1_v2
+        admin_username: adminuser
+        ssh_password_enabled: false
+        ssh_public_keys:
+          - path: /home/adminuser/.ssh/authorized_keys
+            key_data: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC6weIM5RegM8nd65pTC3LbEK30f4CnsaXiF/wfa6MZyUF+ueBSsECahrqjh6CyfahwiRZ0tAY9Bg4FX4C3yteps61AFJ4q11Gon3vZcNvOOqeQYEQHo+PtA47TNbUbVSAnuMiPyJY37JCDMtOI21URHTRzQp8jfVsJ6r6lKY/GNxH+3L9KEGKLUdVREcP9+6maFdCmGFDx+0zPrBWEPnDtb3OcJ8WSrpwK3Im6ty1JqEMlniHOxLEmnDNSfrrBFsLVjNKtPwjZA3H/3OypgPa/8jGTUXOmeQNI3uDCOVy8BchfK2+GlpzE6eutb2o7ldGF45+ErWcnTQIHsMTNM0RIDe9bSw0jEt8bqajxNXsLbZbbssp0sakdtogWn8WPHDBnedVRNuwSiFfYzyob2TteooA2xFfPvNTTfRa/NqiLU22i9n9IafjcGfyxQ5Bw+vIFJbJv7SnNW45c339PncpbpHskyyfcDHi2t2a6t80iuMaZXJwcoRss5/PN46GqVNv0MJKXhUQUijHgdkMVIhiTDTzEG8IDx5JaPR9pVEzINJBrtzxXzbbMD+CPMZgG0qWJ+8bLc2ljWK76vyouBjlIyZUNphfUknjGRvEDR851vfL2EPBCb/kdo8QxpEi+WHNJo4htV6vtetnMFwawavNt5LeSYMLf82BY6SOdcX8yGQ== nemesys@linuxmachine
+        network_interfaces: interface
+        image:
+          offer: UbuntuServer
+          publisher: Canonical
+          sku: '18.04-LTS'
+          version: latest
+        custom_data: "{{ lookup('file', '/home/nemesys/Documents/cloud-init.yml') }}"
