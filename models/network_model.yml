@@ -1,0 +1,84 @@
+- name: Création du ResourceGroup
+  azure_rm_resourcegroup:
+    location: "{{ local }}"
+    name: "{{ resource_group }}"
+- name: Création du VNet
+  azure_rm_virtualnetwork:
+    resource_group: "{{ resource_group }}"
+    name: "{{ vnet_name }}"
+    address_prefixes: "10.0.0.0/16"
+- name: Création du AzureBastionSubnet
+  azure_rm_subnet:
+    resource_group: "{{ resource_group }}"
+    name: AzureBastionSubnet
+    virtual_network_name: "{{ vnet_name }}"
+    address_prefix_cidr: "10.0.1.0/24"
+  register: subnetbast
+- name: Création du Subnet contenant les VM
+  azure_rm_subnet:
+    resource_group: "{{ resource_group }}"
+    name: "{{ subnet_name }}"
+    virtual_network_name: "{{ vnet_name }}"
+    address_prefix: "10.0.2.0/24"    
+- name: Création de l'IP publique du Bastion
+  azure_rm_publicipaddress:
+    resource_group: "{{ resource_group }}"
+    allocation_method: Static
+    name: ipbastion
+    sku: standard
+  register: ipbast
+- debug:
+    msg: "Adresse IP du Bastion: {{ ipbast.state.ip_address }}"
+- name: Récupération de l'IP publique du Bastion
+  azure_rm_publicipaddress_info:
+    resource_group: "{{ resource_group }}"
+    name: ipbastion
+  register: publicIPbast
+- name: Création de l'IP publique de la VM
+  azure_rm_publicipaddress:
+    resource_group: "{{ resource_group }}"
+    allocation_method: Static
+    name: ipvm
+    sku: standard
+    domain_name : "{{ fqdn }}"
+# register est la récupération de la sortie de la fonction dans une variable  ansible.builtin.shell
+  register: ippub
+- debug:
+    msg: "Adresse IP Publique: {{ ippub.state.ip_address }}"
+- name: Création du NSG
+  azure_rm_securitygroup:
+    resource_group: "{{ resource_group }}"
+    name: myNetworkSecurityGroup
+    rules:
+      - name: SSH
+        protocol: Tcp
+        destination_port_range: 22
+        access: Allow
+        priority: 1001
+        direction: Inbound
+      - name: web
+        protocol: Tcp
+        destination_port_range: 80
+        access: Allow
+        priority: 1002
+        direction: Inbound
+      - name: webplus
+        protocol: Tcp
+        destination_port_range: 8080
+        access: Allow
+        priority: 1003
+        direction: Inbound
+      - name: websecur
+        protocol: Tcp
+        destination_port_range: 443
+        access: Allow
+        priority: 1004
+        direction: Inbound
+- name: Network interface
+  azure_rm_networkinterface:
+    resource_group: "{{ resource_group }}"
+    name: interface
+    virtual_network: "{{ vnet_name }}"
+    subnet: subnetg1
+    public_ip_name: ipvm
+    security_group: myNetworkSecurityGroup
