@@ -1,0 +1,52 @@
+- name: Create instance of Application Gateway
+  azure_rm_appgateway:
+    resource_group: "{{ resource_group }}"
+    name: myAppGateway
+    sku:
+      name: standard_v2
+      tier: standard_v2
+      capacity: 2
+    gateway_ip_configurations:
+      - subnet:
+          id: "{{ subnet_id }}"
+        name: app_gateway_ip_config
+    frontend_ip_configurations:
+      - public_ip_address: ipAG
+        name: sample_gateway_frontend_ip_config
+    frontend_ports:
+      - port: 80
+        name: ag_frontend_port
+    backend_address_pools:
+      - backend_addresses:
+          - ip_address: "{{ private_ip_vm }}"
+        name: test_backend_address_pool
+    backend_http_settings_collection:
+      - port: 80
+        protocol: http
+        cookie_based_affinity: enabled
+        name: sample_appgateway_http_settings
+    http_listeners:
+      - frontend_ip_configuration: sample_gateway_frontend_ip_config
+        frontend_port: ag_frontend_port
+        name: sample_http_listener
+    request_routing_rules:
+      - rule_type: Basic
+        backend_address_pool: test_backend_address_pool
+        backend_http_settings: sample_appgateway_http_settings
+        http_listener: sample_http_listener
+        name: rule1s
+
+- name: Creation network interface pour l'application gateway
+  azure_rm_networkinterface:
+    name: nic-appgw
+    resource_group: "{{ resource_group }}"
+    virtual_network: "{{ vnet_name }}"
+    subnet_name: "{{ subnet_name }}"
+    create_with_security_group: false
+    public_ip: false
+    ip_configurations:
+      - name: default
+        primary: true
+        application_gateway_backend_address_pools:
+          - name: test_backend_address_pool
+            application_gateway: myAppGateway

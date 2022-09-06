@@ -1,0 +1,24 @@
+---
+- hosts: localhost
+  vars:
+    resource_group: test_thomas_app_gateway
+    password: 2022Simplon!
+    fqdn: thomas1
+    local: francecentral
+    vnet_name: vnet_test_th
+    subnet_name: app_subnet_th
+    bastion_name: bastion_th_1
+    psql_server_name: psql-th
+    database_name: db-th
+    vm_app_name: vmapp
+    vm_size: Standard_DS1_v2
+    admin_name: thomas
+    image_offer: UbuntuServer
+    image_publisher: Canonical
+    image_sku: '18.04-LTS'
+    image_version: latest
+  connection: local
+  tasks:
+  - import_tasks: ../models/network_model.yml
+  - import_tasks: ../models/vms_model.yml 
+  - import_tasks: ../models/scale_model.yml

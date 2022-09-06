@@ -1,0 +1,64 @@
+- name: Création du Bastion
+  azure.azcollection.azure_rm_bastionhost:
+    resource_group: "{{ resource_group }}"
+    name: "{{ bastion_name }}"
+    ip_configurations:
+      - name: testip
+        subnet:
+          id: "{{ subnetbast.state.id }}"
+        public_ip_address:
+          id: "{{ publicIPbast.publicipaddresses[0].id }}"
+        private_ip_allocation_method: Dynamic
+    sku:
+      name: Standard
+    enable_tunneling: True
+    enable_shareable_link: False
+    enable_ip_connect: False
+    enable_file_copy: False
+    scale_units: 6
+    disable_copy_paste: False
+- name: Création d'une ressource Azure PostgreSQL
+  azure_rm_postgresqlserver:
+    resource_group: "{{ resource_group }}"
+    name: "{{ psql_server_name }}"
+    sku:
+      name: B_Gen5_1
+      tier: Basic
+    location: "{{ local }}"
+    storage_mb: 5120
+    enforce_ssl: False
+    version: 11
+    storage_autogrow: True
+    admin_username: "{{ admin_name }}"
+    admin_password: "{{ password }}"
+- name: Création de la base de données
+  azure_rm_postgresqldatabase:
+    resource_group: "{{ resource_group }}"
+    server_name: "{{ psql_server_name }}"
+    name: "{{ database_name }}"
+- name: Création règle firewall
+  azure_rm_postgresqlfirewallrule:
+    resource_group: "{{ resource_group }}"
+    server_name: "{{ psql_server_name }}"
+    name: authorizing_vmapp
+    start_ip_address: "{{ ippub.state.ip_address }}"
+    end_ip_address: "{{ ippub.state.ip_address }}"
+- name: Création de la VM
+  azure_rm_virtualmachine:
+    resource_group: "{{ resource_group }}"
+    name: "{{ vm_app_name }}"
+    vm_size: "{{ vm_size }}"
+    admin_username: "{{ admin_name }}"
+    ssh_password_enabled: false
+    ssh_public_keys:
+      - path: "/home/{{ admin_name }}/.ssh/authorized_keys"
+        key_data: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDQtaIPgHDrA4olC0mkDwPZqDA6ZHEVBJXUwf4kqwAHiUwnB0DtDlj0Vide0JJ56ODEEIojm3H8LExDRwxTWdFPn+JzwDVMA7xWqBBfcuykmzISXB2cTBR1AILhWIETAHtHZMqWBAZakfc5g1ik0VeQas6JAYHr0nzFdC9wO1FQJnbgoEHZERb4/Xxvxn/91GIvDqPwDRQr1OAutqUeenJyihip+US+Xnbrq/TmKKuQM+MJLrpMa2QlKoflo+7cs69q47v/W8EAx4x8RL77Woz8G5T8FvJuuPVkEcvqEUtb9cbnDaytSp02hYAYstsgW01cRgIVHXta5aK5o/0cmtU0vmMuECWZk18bDw3JkTgBzOKZ/cmJl1ur3qa9744tBKxu31LUbyOVYb92pc72s4lAfUESjPSiqSJ4nQ8iuGuwDDt3RVJEXKUCtnjDxGO8Qa8dgaK/LOEWCRTfLZ9yxo0ytEKCelVC2fVhBv1pJQubYb8R8IkqmcyoZ2+b5iOiVSIOgfijnEAh2aOTX/uTgcDNKYxxNpfTe0e+hXRfP/LL4QF+BF43uXwEEfw42I3X9jfO7Usd7LQndsIiA9B93gv87CtdoOIUCpRt4b4t1Q2d0cBhlS/YPqixauxMvpXJcUDISwoVCfmCjMNposBbIiyH4vrq91P4apb1u7oTmrNaTQ== thomas@host
+    network_interfaces: interface_vm
+    image:
+      offer: "{{ image_offer }}"
+      publisher: "{{ image_publisher }}"
+      sku: "{{ image_sku }}"
+      version: "{{ image_version }}"
+    custom_data: "{{ lookup('file', './cloud-init_tmp.yml') }}"
+- debug:
+    msg: " ### Lien de N8N: http://{{ fqdn }}.{{ local }}.cloudapp.azure.com ###"
