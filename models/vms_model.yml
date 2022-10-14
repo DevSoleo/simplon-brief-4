@@ -1,3 +1,4 @@
+
 - name: Création du Bastion
   azure.azcollection.azure_rm_bastionhost:
     resource_group: "{{ resource_group }}"
@@ -52,13 +53,13 @@
     ssh_password_enabled: false
     ssh_public_keys:
       - path: "/home/{{ admin_name }}/.ssh/authorized_keys"
-        key_data: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDQtaIPgHDrA4olC0mkDwPZqDA6ZHEVBJXUwf4kqwAHiUwnB0DtDlj0Vide0JJ56ODEEIojm3H8LExDRwxTWdFPn+JzwDVMA7xWqBBfcuykmzISXB2cTBR1AILhWIETAHtHZMqWBAZakfc5g1ik0VeQas6JAYHr0nzFdC9wO1FQJnbgoEHZERb4/Xxvxn/91GIvDqPwDRQr1OAutqUeenJyihip+US+Xnbrq/TmKKuQM+MJLrpMa2QlKoflo+7cs69q47v/W8EAx4x8RL77Woz8G5T8FvJuuPVkEcvqEUtb9cbnDaytSp02hYAYstsgW01cRgIVHXta5aK5o/0cmtU0vmMuECWZk18bDw3JkTgBzOKZ/cmJl1ur3qa9744tBKxu31LUbyOVYb92pc72s4lAfUESjPSiqSJ4nQ8iuGuwDDt3RVJEXKUCtnjDxGO8Qa8dgaK/LOEWCRTfLZ9yxo0ytEKCelVC2fVhBv1pJQubYb8R8IkqmcyoZ2+b5iOiVSIOgfijnEAh2aOTX/uTgcDNKYxxNpfTe0e+hXRfP/LL4QF+BF43uXwEEfw42I3X9jfO7Usd7LQndsIiA9B93gv87CtdoOIUCpRt4b4t1Q2d0cBhlS/YPqixauxMvpXJcUDISwoVCfmCjMNposBbIiyH4vrq91P4apb1u7oTmrNaTQ== thomas@host
-    network_interfaces: interface_vm
+        key_data: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC6weIM5RegM8nd65pTC3LbEK30f4CnsaXiF/wfa6MZyUF+ueBSsECahrqjh6CyfahwiRZ0tAY9Bg4FX4C3yteps61AFJ4q11Gon3vZcNvOOqeQYEQHo+PtA47TNbUbVSAnuMiPyJY37JCDMtOI21URHTRzQp8jfVsJ6r6lKY/GNxH+3L9KEGKLUdVREcP9+6maFdCmGFDx+0zPrBWEPnDtb3OcJ8WSrpwK3Im6ty1JqEMlniHOxLEmnDNSfrrBFsLVjNKtPwjZA3H/3OypgPa/8jGTUXOmeQNI3uDCOVy8BchfK2+GlpzE6eutb2o7ldGF45+ErWcnTQIHsMTNM0RIDe9bSw0jEt8bqajxNXsLbZbbssp0sakdtogWn8WPHDBnedVRNuwSiFfYzyob2TteooA2xFfPvNTTfRa/NqiLU22i9n9IafjcGfyxQ5Bw+vIFJbJv7SnNW45c339PncpbpHskyyfcDHi2t2a6t80iuMaZXJwcoRss5/PN46GqVNv0MJKXhUQUijHgdkMVIhiTDTzEG8IDx5JaPR9pVEzINJBrtzxXzbbMD+CPMZgG0qWJ+8bLc2ljWK76vyouBjlIyZUNphfUknjGRvEDR851vfL2EPBCb/kdo8QxpEi+WHNJo4htV6vtetnMFwawavNt5LeSYMLf82BY6SOdcX8yGQ== nemesys@linuxmachine
+    network_interfaces: interface
     image:
       offer: "{{ image_offer }}"
       publisher: "{{ image_publisher }}"
       sku: "{{ image_sku }}"
       version: "{{ image_version }}"
-    custom_data: "{{ lookup('file', './cloud-init_tmp.yml') }}"
+    custom_data: "{{ lookup('file', './tmp/cloud-init_tmp.yml') }}"
 - debug:
     msg: " ### Lien de N8N: http://{{ fqdn }}.{{ local }}.cloudapp.azure.com ###"

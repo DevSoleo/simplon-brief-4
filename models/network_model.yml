@@ -19,23 +19,7 @@
     resource_group: "{{ resource_group }}"
     name: "{{ subnet_name }}"
     virtual_network_name: "{{ vnet_name }}"
-    address_prefix: "10.0.2.0/24"
-- name: Création du Subnet contenant l'app gateway
-  azure_rm_subnet:
-    resource_group: "{{ resource_group }}"
-    name: subnet_ag
-    virtual_network_name: "{{ vnet_name }}"
-    address_prefix: "10.0.3.0/24" 
-  register: subnetAG
-- name: recuperer info subnet AG
-  azure_rm_subnet_info:
-    resource_group: "{{ resource_group }}"
-    virtual_network_name: "{{ vnet_name }}"
-    name: subnet_ag 
-  register: subnet_outputs
-- name: recuperer subnet id
-  set_fact:
-      subnet_id: "{{ subnet_outputs.subnets[0].id }}"   
+    address_prefix: "10.0.2.0/24"    
 - name: Création de l'IP publique du Bastion
   azure_rm_publicipaddress:
     resource_group: "{{ resource_group }}"
@@ -50,11 +34,11 @@
     resource_group: "{{ resource_group }}"
     name: ipbastion
   register: publicIPbast
-- name: Création de l'IP publique de l'AG
+- name: Création de l'IP publique de la VM
   azure_rm_publicipaddress:
     resource_group: "{{ resource_group }}"
     allocation_method: Static
-    name: ipAG
+    name: ipvm
     sku: standard
     domain_name : "{{ fqdn }}"
 # register est la récupération de la sortie de la fonction dans une variable  ansible.builtin.shell
@@ -90,23 +74,11 @@
         access: Allow
         priority: 1004
         direction: Inbound
-
-- name: Network Interface VM
+- name: Network interface
   azure_rm_networkinterface:
-    name: interface_vm
     resource_group: "{{ resource_group }}"
+    name: interface
     virtual_network: "{{ vnet_name }}"
-    subnet_name: "{{ subnet_name }}"
-    create_with_security_group: False
-    ip_configurations:
-      - name: ipconfig1
-        primary: True
+    subnet: "{{ subnet_name }}"
+    public_ip_name: ipvm
     security_group: myNetworkSecurityGroup
-- name: recuperer info interface réseau
-  azure_rm_networkinterface_info:
-    resource_group: "{{ resource_group }}"
-    name: interface_vm
-  register: network_interface_output
-- name: recuperer ip privée
-  set_fact:
-    private_ip_vm: "{{ network_interface_output.networkinterfaces[0].ip_configurations[0].private_ip_address }}"

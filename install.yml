@@ -1,0 +1,28 @@
+---
+- hosts: localhost
+  vars:
+    resource_group: nmtest
+    password: 2022Simplon!
+    fqdn: n8mtest
+    local: francecentral
+    vnet_name: vnet
+    subnet_name: subnet
+    bastion_name: bastion
+    psql_server_name: posgresnmtest
+    database_name: bddn8nm
+    vm_app_name: vmapp
+    vm_size: Standard_DS1_v2
+    admin_name: adminuser
+    image_offer: UbuntuServer
+    image_publisher: Canonical
+    image_sku: '18.04-LTS'
+    image_version: latest
+  connection: local
+  tasks:
+  - name: initialisation du fichier cloud-init
+    ansible.builtin.template:
+      src: ./models/cloud-init_model.yml
+      dest: ./tmp/cloud-init_tmp.yml
+  - import_tasks: ./models/network_model.yml
+  - import_tasks: ./models/vms_model.yml
+  - import_tasks: ./models/gateway_model.yml
